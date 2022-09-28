@@ -1,3 +1,13 @@
+--------------------
+
+This one should be relatively simple, as it's almost the same as one of the examples shown in class. No long complicated ROP chain needed here, there's a much easier way. Why on earth is the program showing all that sensitive debugging information??? That seems excessive.
+
+Here's a nice, concise blog post you might find helpful. :)
+
+https://blog.techorganic.com/2015/04/21/64-bit-linux-stack-smashing-tutorial-part-2/
+
+--------------------
+
 2022.09.27.0819.EST
 
 [NOTE] /lib64/ld-linux-x86-64.so.2 is aparantly the kernel library that is loaded. Should be libc... maybe?

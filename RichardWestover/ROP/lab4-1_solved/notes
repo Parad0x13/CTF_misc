@@ -1,0 +1,17 @@
+--------------------
+
+Here you go! Quick reminder, the c code header file is the program/ELF that is running so there are clues there...to break and get shell on the bin file. ENJOY!
+Lab4-1
+I wrote a program to generate MD5 hashes. Give it a try! Send it some data, and it will send back the MD5 hash of your data. Just don't enter too much data; for some reason that seems to crash it.... weird. Anyway, it has that fancy "NX" feature enabled, so it should be safe... right? :)
+
+There are a million and one resources online, but here's a currated list of the ones I think are well written and most relevant. If you're unsure where to start, maybe give these a read.
+
+https://bordplate.no/blog/en/post/interactive-rop-tutorial/
+https://ctf101.org/binary-exploitation/return-oriented-programming/
+https://trustfoundry.net/basic-rop-techniques-and-tricks/
+https://blog.vero.site/post/baby-boi
+If you're familiar with the YouTuber "LiveOverflow", he has some nice videos on the subject as well.
+
+https://www.youtube.com/watch?v=zaQVNM3or7k
+
+--------------------

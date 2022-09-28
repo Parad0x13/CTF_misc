@@ -1,0 +1,14 @@
+--------------------
+
+Years ago there was this neat little bug discovered in OpenSSL, which became known as "Heartbleed". The world's first bug with a name. Heck, it even had a logo! :) That fad has really caught on since... ShellShock, Log4Shell, DirtyCOW, Spectre, Meltdown, and the list goes on. If you've found a bug and need a name, here's a handy resource: https://paulbellamy.com/vulnerability-name-generator/
+
+I have attempted to recreate something similar to Heartbleed here for you. It's definitely buggy, but I made sure to enable both stack cookies and DEP/NX, meaning it should be super-duper impossible to exploit... right?
+
+In keeping with tradition, since this is a more difficult challenge I will only require that you give it your best effort. I would like to see everyone at least attempt it, but I won't require a full working solution for full credit. That said, if you land a shell I'll be very impressed!
+
+--------------------
+
+2022.09.27.2315.EST
+
+If I run gdb's [x/64x 0x7fffffffe008] I get a list of additional addresses that seem to gradually increase in value padded by 0x7fff
+I have no idea what I'm looking at
