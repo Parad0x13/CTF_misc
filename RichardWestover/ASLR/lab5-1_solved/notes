@@ -1,0 +1,24 @@
+To see if ASLR is enabled: checksec <filename>
+
+Ideas to bypass ASLR
+- Leak and calculate
+	pointer = baseaddress + offset
+	Therefor baseaddress = pointer - offset
+	Offsets can then be calculated if we know the baseaddress
+- Partial overwrite
+	Overwrite only the last byte/bytes in return address to call a function close in disassembly to where it is supposed to return to
+- Memory spray
+	Generate a NOP sled/RET sled and have that crash into your shellcode. The teacher had it on +rx memoryspace but wasn't really on stack. But not on Heap either
+
+# [TODO checkout vmmap in gdb
+# vmmap in gdb to find base address... or something...
+
+# checksec to see permissions
+
+# p.readuntil()
+
+# <objdump -d -Mintel my.bin> to see the goods
+
+# echo -en "somestuff\x69" | ./my.bin to send it bytes, without the newline character
+
+# pgrep so you don't have to find PID, e.g. gdb $(pgrep file.bin)
