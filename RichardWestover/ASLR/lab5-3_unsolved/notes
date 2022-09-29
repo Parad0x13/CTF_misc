@@ -1,0 +1,30 @@
+2022.09.29.1058.EST
+
+ASLR bypass via Memory Spray
+
+First thing I want to figure out is the particulars in how allocation works, and where that allocation goes in memory
+Specifically libc's void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset) function
+[NOTE] The c code specifically calls mmap so we don't have to worry about tricking malloc into using mmap rather than alloc to the heap
+[NOTE] Can use vmmap in gdb to see mapped memory sections
+
+get_data(void *p, unsigned int len) works by taking an index *p into the global *data array which is a 0x1000 byte-aligned block
+This block is aligned against the passed length. So e.g. if you request get_data of length 0x5 the passed block pointer will be
+of length 0x1000. And in turn if you pass a length of say 0x1010 the passed block pointer will be of length 0x2000
+
+The global data array is of length NUM_DATA_BLOCKS which happens to be 256 (0x100)
+This means if we fill the global data array with the smallest possible block size (0x1000 since it has to be aligned)
+we would need a total of 0x1000 * 0x100 bytes or 0x10000 bytes. Or 1,048,576 decimal
+Or I guess a little over a megabyte in total if I'm calculating it correctly
+
+Issue I'm having right now is I don't know where this information is being dumped into memory at
+I can't seem to use 'locate' in geb to find it, which is annoying...
+In the lecture he mentions a rwx segment above c library, but vmmap doesn't show any rwx segment above the c library
+This may be because he has DEP enabled too maybe? Dunno
+
+Running vvmap in gdb I find that my code starts at 0x56555000 and ends at 0x5655a000
+find 0x56555000, 0x5655a000, {char[8]}"AAAAAAAA" will not find it, but if I extend past this just a little bit like so:
+find 0x56555000, 0x5655a000+0x1000, {char[8]}"AAAAAAAA" it will find a bunch, but I can't seem to find where they are contiguous in memory
+They seem to be disjointed
+
+0x5655a1b0 is the first location where 8 'A's are found
+For example [x/16x 0x5655a1b0] shows a bunch of 'A's but they are not continued in memory even though I think they should be. I'm confused
