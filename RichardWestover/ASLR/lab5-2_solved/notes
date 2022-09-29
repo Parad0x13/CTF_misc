@@ -1,0 +1,23 @@
+2022.09.29.0941.EST
+
+[objdump -d -Mintel ./lab5-2.bin | less] matches with the interesting/useful .c code's functions:
+    void get_string(char *s) -> 0x1322 from base
+    void greet() -> 0x1364 from base
+    int main() -> 0x13a8 from base
+    void win() -> 0x13cb from base
+
+I think this is going to be a simple reuse of the ??? ASLR bypass
+Just need to rewrite the last byte in the return address to get to win()
+
+The 0x13 part of the address is likely going to be randomized by ASLR so we should only care about the last byte
+
+After main() runs init() it then calls greet()
+greet() has a name[16] local variable that is created on the stack
+greet() then calls get_string(char *s) to get the user input
+get_string(char *s) simply continues to call getch() and puts each value into the next index of *s
+It does this until it recieves a newline '\n'
+
+It is important to note that a newline character is not appended into the buffer as the for loop breaks when a newline is detected
+
+Once you overwrite the 16 byte buffer you can then send 0xcb wich is the offset to the win() function
+This will overwrite the last byte in the little-endian return address of greet() to divert from returning to main()
