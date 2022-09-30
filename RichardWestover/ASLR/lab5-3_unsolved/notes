@@ -1,6 +1,20 @@
 2022.09.29.1058.EST
 
-ASLR bypass via Memory Spray
+Arch:     i386-32-little
+RELRO:    Full RELRO
+Stack:    No canary found
+NX:       NX disabled
+PIE:      PIE enabled
+RWX:      Has RWX segments
+
+-= Dynamically Linked! =-
+linux-gate.so.1 (0xf7fc9000)
+libc.so.6 => /lib32/libc.so.6 (0xf7d82000)
+/lib/ld-linux.so.2 (0xf7fcb000)
+
+[NOTE] We have RWX sgments, and basically everything else is disabled except ASLR. Interesting
+
+--== ASLR bypass via Memory Spray ==-
 
 First thing I want to figure out is the particulars in how allocation works, and where that allocation goes in memory
 Specifically libc's void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset) function
