@@ -12,6 +12,16 @@ In keeping with tradition, since this is a more difficult challenge I will only 
 
 [HELPFUL] https://stackabuse.com/how-to-exploit-the-heartbleed-bug/
 
+checksec ./lab4-3.bin
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    Canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x400000)
+
+This tells me that PIE is disabled, probably on purpose. Can we use this to force a rwx section and then manually navigate to it?
+Also important to note is that this is as statically linked binary with no imports
+
 If I run gdb's [x/64x 0x7fffffffe008] I get a list of additional addresses that seem to gradually increase in value padded by 0x7fff
 I have no idea what I'm looking at
 
@@ -47,3 +57,29 @@ Okay I'm able to overwrite the desired return address, however stack canary is b
 I actually don't know how to properly bypass this tbh. I knew before but have since forgotten
 
 Could it be that those two bytes after data[1024] on the stack is actually the cookie?
+Yes... yes it is... I can't believe it took me that long to figure that simple part out
+
+I think I could use [void *memalign(size_t alignment, size_t size);] to malloc onto the heap
+And then use [int mprotect(void *addr, size_t len, int prot);] to set permissions
+e.g. [buffer = memalign(pagesize, pagesize);] and then [mprotect(buffer, pagesize, PROT_READ | PROT_WRITE | PROT_EXEC);]
+This will add rwx to that memory location and since ASLR is disabled (PIC) I should be able to access this location with a hardcoded ptr
+
+Or instead I could use [void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);] instead
+That way I can map memory virtually and set permissions at the same time
+Sending NULL to addr will force the kernel to choose a location for me. ASLR (PIC) being disabled will be a good help here too
+
+gdb's [disass mmap64] returns the location 0x452290
+
+--== COOL TIP FOR FINDING ROP GADGETS!!! ==--
+If you can't seem to find a gadget you can search memory for what bytes are 'supposed' to match the gadget instead
+e.g. say you can't find a [pop rax;ret] gadget, you could just search for the binary equivilant
+0x58 is pop rax and 0xc3 is ret. So in gdb you could run [search /b start,end,0x58,0xcb] Use [vmmap] to show where your binary is loaded
+The /b is to search with granularity at the byte level
+And if you want to concatenate your bytes into a word just use /h for halfwords (2bytes), /w for words (4bytes), and /g for giant words (8bytes)
+Just make sure you account for endianness. e.g. pop rax;ret might become [find /h 0x400000, 0x4e5000, 0xc358]
+I'd rather just use the single byte granularity though
+
+JEEZE! I can't even seem to find a malloc or alloc gadget...
+With the help of Ghidra and actually just running [disass malloc] in gdb I found it at 0x427910
+
+Could I just allocate memory via malloc and have that go to the heap, then call mprotect and change it to rwx?
