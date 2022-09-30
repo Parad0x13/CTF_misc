@@ -83,3 +83,21 @@ JEEZE! I can't even seem to find a malloc or alloc gadget...
 With the help of Ghidra and actually just running [disass malloc] in gdb I found it at 0x427910
 
 Could I just allocate memory via malloc and have that go to the heap, then call mprotect and change it to rwx?
+
+gef: search-pattern 0x59c4 doesn't return anything, but search-pattern 0xc459 does... wtf
+
+
+Could xor eax, eax
+push eax, push desired_rcx, xor eax, pop eax, xchg ecx, pop eax
+his should work right?
+
+
+
+0x0044fa45               87c1  xchg ecx, eax
+0x0044fa47         e80583e007  call 0x8257d51
+
+
+or
+
+
+0x0000000000443fef: xchg ecx, eax; sub eax, edx; ret;
