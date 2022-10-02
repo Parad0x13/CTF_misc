@@ -24,3 +24,10 @@ I had the idea of breaking when the random code is generated, this would be at g
 
 Honestly I have no idea how we are supposed to grab the pid... I see no vulnerabilities to override the stack and call getpid() ourselves
 And I also don't think that is supposed to be the way this is to be solved. There has to be some other logic issue here
+
+2022.10.02.1950.EST
+After watching the lecture I've realized that there is an uninitialized variable char auth_username[16];
+We can 'verify username' even though we haven't set one and get some data back
+
+I can get some random data from that uninitialized variable, but I don't know what it is
+I'll have to take a closer look at how the stack is structured during these calls to see what actually happens in memory
