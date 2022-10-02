@@ -1,0 +1,26 @@
+2022.10.01.2358.EST
+
+Had to disable PIE/NX/ASlR with:
+gcc lab6-1.c -o  lab6-1.bin -fno-stack-protector -no-pie -z execstack
+
+checksec return:
+Arch:     amd64-64-little
+RELRO:    Partial RELRO
+Stack:    No canary found
+NX:       NX disabled
+PIE:      No PIE (0x400000)
+RWX:      Has RWX segments
+
+We noticed that it may be possible to send a ROP chain against configure_username (case selection 1)
+Knowing this we can hopefully get the pid of the process via getpid() which is statically compiled at location 0x401060 [0000000000401060 <getpid@plt>]
+
+This ended up not being the case as the lines:
+scanf("%15s", tmp);
+strncpy(auth_username, tmp, 16);
+Ensure in both situations that we cannot' override the stack. In the scanf we truncate after 15 character to ensure the string is NULL terminated
+In the strncpy we ensure the destination buffer is only written to by a max of 16 bytes
+
+I had the idea of breaking when the random code is generated, this would be at generate_code+13, to which eax will hold the final generated code
+
+Honestly I have no idea how we are supposed to grab the pid... I see no vulnerabilities to override the stack and call getpid() ourselves
+And I also don't think that is supposed to be the way this is to be solved. There has to be some other logic issue here

@@ -1,0 +1,107 @@
+Searching menu option 5 gives 8458358729109303106, 0x38343538333538373239313039333033313036 which is large
+Menu option 6 yields 495840487282, 0x343935383430343837323832
+Unless those themselves are addresses. Which they are not. I forgot how I solved this already...
+Should have started noting this earlier...
+
+0x7fffffffe078 is where I found the list and is consistant across runs
+0x7fffffffe3ba is first listing, contains lots of data
+0x7fffffffe3cc seems to be the second one and is only 12 apart
+0x7fffffffe3db seems to be the third and is 15 apart
+They just increment by some amount then end in all zeros
+
+Canary for this run was 0x7fffffffe399, which is VERY close to the list from above. But not actually listed in it
+If you look for it in memory it is predicated by _start, which sits in infinite loop
+Easy to see if you use gdb's x/100a which formats to address
+
+Okay, cool. Found the shell code. If you view that garbled data you get an embedded script
+Had some issues with binwalk on my version of kali, but sudo apt-get --purge remove binwalk reverted to correct version
+For some reason I can't get binwalk's lzma to work so no auto extraction I guess...
+If I just run binwalk without extraction there are 7 compressed lzma embedded files
+
+I just got fed up and carved it manually
+However I don't think its shell code at all now that I look at it closer, I should have seen that earlier
+Specifically because there doesn't seem to call out to anywhere external and also... its not shell code
+
+After some more trouble extracting with binwalk I don't actually think those files are .7z files. Or at least not one that windows was able to extract
+
+I got fed up with things not working so I uninstalled all python and installed python3 and python2-is-python3
+Also binwalk which no longer detects lzma streams so it seems. Luckily matplotlib likes to install now
+
+I'm kinda getting the feeling that there may be missing information about this ctf that I'm not privy to
+Or I'm just dumb
+
+I broke my VM... Well that was annoying. Gonna take it from the top for a new perspective
+Canary this run seems to stay at 0x7fffffffe3b9, ASLR off as well I guess
+
+Somehow the combination of these two becomes 0x7fffffffe3b9, I think
+
+The line scanf(" %d", &r); assumes base 10 btw, unlike with %i which identifies the base by the input
+Just to keep in mind I guess. At any rate 4 bytes are returned
+However the canary is 8 bytes long, meaning some manipulation or multiple calls will have to be made
+
+Theoretically I should be able to read the first part of "Bob's Burgers" from asking for price 4
+But I'm not able to discern how yet
+However I've just now noticed that the printf for Current Price is a long double, which is 10 bytes
+So an integer is being cast into a long double. Not sure if that's relevant right now though
+May be onto something here. When I enter 4 I get the value 8458358729109303106 which is 19 digits long
+However the max an unsigned long can go is up to is 10 digits. So something is happening
+Also an unsigned integer can only have like 5 base 10 digits of precision. I'm using this as a reference:
+https://byjus.com/gate/size-of-data-types-in-c/
+I know its signed as well from the code and the random negative values I get when I fuzz
+So I really don't know how I would, or even could, translate them in any meaningful way
+
+2022.09.17.0357.EST It's getting late. I need to sleep
+2022.09.17.0411.EST I can't sleep... and I already took my meds so yea... this'll be a fun experiment
+
+First attempt at overflow I reached 0x7fffffffdf78 first
+I think I was getting stack pointer issues when trying to x/100wx as none of the pointers or values seemed to make sense
+Yea actually I was. I was seeing things offset. in this case I needed x/128x $sp+6
+I wonder if it'll always be offset by 6
+I also wonder if by the end of the 60 second timer something is changed in memory because I can no longer see any of my spam in anywhere I look in memory
+Turns out when I was breaking I was doing so in a standard c library, no the right stack I don't think
+I was able to figure this out with info frame. info proc mappings is what I needed to check
+Alright with that I was able to locate 0x1bc440 as the end offset where all my stuff went
+Through VERY tedious effort I found it was located at this range with this command:
+dump binary memory mem.bin 0x7ffff7f46000 0x7ffff7f9e000, the 3rd in /usr/lib/x86_64-linux-gnu/libc.so.6
+I imagine with things like ASLR that would be totally different on a real machine
+
+I was however able to get it to crash consistently by flooding change name
+Luckily in the crashlog the last stacktrace was __stack_chk_fail(), which is promising
+Just found that exactly 25 characters will create a stack failure
+So for SURE gets(name); is at least one vulnerability here. The printfs were actually not vulnerable since they were formatted strings
+
+However it's odd because through debugging the stack should be laid out like this:
+int choice;
+long canaryPtr;
+long prices [4];
+char name [20];
+long canary_loc;
+This would mean I 'should' crash on 21 characters right? Since that would mean the canary has been overwritten
+But... oddly it doesn't up until 25. Not even 22 does even if it accounts for the canaries null tail
+However I still don't know how to read it since all other prints are protected
+Okay I think I'm just being a moron. Those extra 4 bytes are moving in the OTHER direction on the stack
+Meaning we change the prices not go directly to the canary_loc. Man I am tired...
+Whelp... I don't know why but I couldn't change the prices so I'm at a loss again
+Maybe the canary just doesn't care about more bytes than I thought or something I dunno
+
+2022.09.17.0546.EST I dunno... I'm getting really tired enough to get a headache. I'm going to bed
+
+2022.10.01.2342.EST Started working on it briefly
+
+Checksec returns:
+Arch:     amd64-64-little
+RELRO:    Partial RELRO
+Stack:    Canary found
+NX:       NX disabled
+PIE:      No PIE (0x400000)
+RWX:      Has RWX segments
+
+So we don't have ASLR and we can write and execute on the stack
+
+ldd shows that libc is loaded. We should be able to do a ret2libc exploit here pretty easily
+
+The stack looks like this:
+int choice;
+char name[20] = "Bob's burgers";
+long prices[4] = { 299, 449, 999, 58623 };
+So we should have 8+20+(8*4) bytes on the local stack right?
